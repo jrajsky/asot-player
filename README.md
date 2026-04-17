@@ -1,4 +1,4 @@
-# asot-player
+# ASOT Player
 
 A stateful browser player for **Armin van Buuren – A State of Trance episodes 001–499**, streamed directly from the [Internet Archive](https://archive.org/details/Armin_van_Buuren_A_State_of_Trance_001-499).
 
@@ -86,4 +86,3 @@ The header stats bar shows counts for each state. Click a count (e.g. **2 in pro
 - Progress data stored under the localStorage key `asot_player_v1`
 - View state (scroll position, filter, search) stored under `asot_view_v1`
 - Position is saved every 4 seconds during playback, on pause, and when the tab is closed
-

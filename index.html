@@ -376,6 +376,102 @@
   .qnav-btn:hover  { background: var(--border); color: var(--text); }
   .qnav-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+  /* ── Sync button & status ── */
+  #btn-sync {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: color 0.15s, border-color 0.15s;
+    position: relative;
+  }
+  #btn-sync:hover { color: var(--text); border-color: var(--text-muted); }
+  #btn-sync.active { border-color: var(--accent); color: var(--accent2); }
+
+  .sync-dot {
+    position: absolute;
+    top: -3px; right: -3px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+  }
+  .sync-dot.none    { background: var(--text-muted); }
+  .sync-dot.ok      { background: var(--green); }
+  .sync-dot.error   { background: var(--red); }
+  .sync-dot.syncing { background: var(--amber); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+  /* ── Settings panel ── */
+  #settings-panel {
+    display: none;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    gap: 12px;
+    flex-direction: column;
+  }
+  #settings-panel.open { display: flex; }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .settings-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    width: 90px;
+    flex-shrink: 0;
+  }
+
+  .settings-input {
+    flex: 1;
+    min-width: 180px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-family: monospace;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .settings-input:focus { border-color: var(--accent); }
+
+  .settings-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .settings-btn:hover    { background: var(--border); }
+  .settings-btn.primary  { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .settings-btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+
+  .sync-status-text {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    flex: 1;
+  }
+  .sync-status-text.ok    { color: var(--green); }
+  .sync-status-text.error { color: var(--red); }
+
   /* ── Scrollbar fill for seek ── */
   .filled-track {
     background: linear-gradient(
@@ -408,8 +504,27 @@
       <option value="wip">In progress</option>
       <option value="done">Completed</option>
     </select>
+    <button id="btn-sync" title="Sync settings">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+      <span class="sync-dot none" id="sync-dot"></span>
+    </button>
   </div>
 </header>
+
+<!-- Settings panel -->
+<div id="settings-panel">
+  <div class="settings-row">
+    <span class="settings-label">GitHub token</span>
+    <input class="settings-input" id="input-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+    <input class="settings-input" id="input-gist-id" type="text" placeholder="Gist ID (auto-filled on first sync)" autocomplete="off" spellcheck="false" style="max-width:280px">
+    <button class="settings-btn primary" id="btn-sync-now">Sync now</button>
+    <button class="settings-btn" id="btn-clear-gist">Forget token</button>
+  </div>
+  <div class="settings-row">
+    <span class="settings-label"></span>
+    <span class="sync-status-text" id="sync-status-text">Enter a GitHub Personal Access Token with <strong>gist</strong> scope to sync progress across devices.</span>
+  </div>
+</div>
 
 <!-- Quick nav -->
 <div id="quick-nav">
@@ -468,8 +583,10 @@
 const ITEM_ID  = 'Armin_van_Buuren_A_State_of_Trance_001-499';
 const META_URL = `https://archive.org/metadata/${ITEM_ID}`;
 const DL_BASE  = `https://archive.org/download/${ITEM_ID}/`;
-const STORAGE_KEY = 'asot_player_v1';
-const VIEW_KEY    = 'asot_view_v1';
+const STORAGE_KEY  = 'asot_player_v1';
+const VIEW_KEY     = 'asot_view_v1';
+const GIST_KEY     = 'asot_gist_v1';
+const GIST_FILE    = 'asot-progress.json';
 const SAVE_INTERVAL_MS = 4000;      // save position every 4 s
 const COMPLETE_THRESHOLD = 0.97;    // 97% = completed
 
@@ -571,6 +688,8 @@ async function init() {
     renderAll();
     updateStats();
     requestAnimationFrame(updateQnavActive);
+    // Pull remote progress after tracks are rendered (non-blocking)
+    fullSync().catch(() => {});
   } catch (err) {
     loadingEl.style.display = 'none';
     errorEl.style.display   = 'block';
@@ -971,7 +1090,195 @@ qnavBtns.forEach(btn => {
 // Update active quick-nav button on scroll
 trackList.addEventListener('scroll', updateQnavActive);
 
+// ── Gist sync ─────────────────────────────────────────────────────────────
+const syncDot        = document.getElementById('sync-dot');
+const syncStatusText = document.getElementById('sync-status-text');
+const inputToken     = document.getElementById('input-token');
+const inputGistId    = document.getElementById('input-gist-id');
+const btnSyncNow     = document.getElementById('btn-sync-now');
+const btnClearGist   = document.getElementById('btn-clear-gist');
+const btnSyncToggle  = document.getElementById('btn-sync');
+const settingsPanel  = document.getElementById('settings-panel');
+
+function loadGistConfig() {
+  try { return JSON.parse(localStorage.getItem(GIST_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function saveGistConfig(cfg) {
+  try { localStorage.setItem(GIST_KEY, JSON.stringify(cfg)); } catch {}
+}
+
+function setSyncStatus(state, message) {
+  syncDot.className = `sync-dot ${state}`;
+  const cfg = loadGistConfig();
+  if (message) {
+    syncStatusText.textContent = message;
+    syncStatusText.className   = `sync-status-text ${state === 'error' ? 'error' : state === 'ok' ? 'ok' : ''}`;
+  } else if (state === 'ok' && cfg.lastSync) {
+    const d = new Date(cfg.lastSync);
+    syncStatusText.textContent = `Last synced: ${d.toLocaleString()}`;
+    syncStatusText.className   = 'sync-status-text ok';
+  } else if (state === 'none') {
+    syncStatusText.textContent = 'Enter a GitHub Personal Access Token with gist scope to sync progress across devices.';
+    syncStatusText.className   = 'sync-status-text';
+  } else if (state === 'syncing') {
+    syncStatusText.textContent = 'Syncing…';
+    syncStatusText.className   = 'sync-status-text';
+  }
+}
+
+// Per-episode merge: take the most advanced state
+function mergeProgress(local, remote) {
+  const merged = { ...local };
+  for (const [name, rp] of Object.entries(remote)) {
+    const lp = merged[name];
+    if (!lp) {
+      merged[name] = rp;
+    } else if (rp.completed && !lp.completed) {
+      merged[name] = rp;
+    } else if (!lp.completed && !rp.completed && (rp.position || 0) > (lp.position || 0)) {
+      merged[name] = rp;
+    }
+  }
+  return merged;
+}
+
+async function gistFetch(method, path, body) {
+  const cfg = loadGistConfig();
+  if (!cfg.token) throw new Error('No token configured.');
+  const res = await fetch(`https://api.github.com${path}`, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${cfg.token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function syncToGist() {
+  const cfg = loadGistConfig();
+  if (!cfg.token) return;
+  setSyncStatus('syncing');
+  try {
+    const content = JSON.stringify(progress, null, 2);
+    if (!cfg.gistId) {
+      const data = await gistFetch('POST', '/gists', {
+        description: 'ASOT Player – progress sync',
+        public: false,
+        files: { [GIST_FILE]: { content } },
+      });
+      cfg.gistId = data.id;
+      inputGistId.value = data.id;
+    } else {
+      await gistFetch('PATCH', `/gists/${cfg.gistId}`, {
+        files: { [GIST_FILE]: { content } },
+      });
+    }
+    cfg.lastSync = new Date().toISOString();
+    saveGistConfig(cfg);
+    setSyncStatus('ok');
+  } catch (err) {
+    setSyncStatus('error', `Sync failed: ${err.message}`);
+    console.error('Gist push error:', err);
+  }
+}
+
+async function syncFromGist() {
+  const cfg = loadGistConfig();
+  if (!cfg.token || !cfg.gistId) return;
+  setSyncStatus('syncing');
+  try {
+    const data    = await gistFetch('GET', `/gists/${cfg.gistId}`);
+    const content = data.files[GIST_FILE]?.content;
+    if (!content) throw new Error(`File "${GIST_FILE}" not found in Gist.`);
+    const remote  = JSON.parse(content);
+    progress = mergeProgress(progress, remote);
+    saveProgress(progress);
+    renderAll();
+    updateStats();
+    cfg.lastSync = new Date().toISOString();
+    saveGistConfig(cfg);
+    setSyncStatus('ok');
+  } catch (err) {
+    setSyncStatus('error', `Sync failed: ${err.message}`);
+    console.error('Gist pull error:', err);
+  }
+}
+
+async function fullSync() {
+  const cfg = loadGistConfig();
+  if (!cfg.token) return;
+  // If we have a Gist ID, pull first (merge remote into local), then push merged result.
+  // If no Gist ID yet, just push (creates the Gist).
+  if (cfg.gistId) {
+    await syncFromGist();
+  }
+  await syncToGist();
+}
+
+function initGistUI() {
+  const cfg = loadGistConfig();
+  if (cfg.token)  inputToken.value  = cfg.token;
+  if (cfg.gistId) inputGistId.value = cfg.gistId;
+  setSyncStatus(cfg.token ? (cfg.lastSync ? 'ok' : 'none') : 'none');
+  if (cfg.token && !cfg.lastSync) setSyncStatus('none');
+  if (cfg.token && cfg.lastSync)  setSyncStatus('ok');
+  btnSyncToggle.classList.toggle('active', !!cfg.token);
+}
+
+// Settings panel toggle
+btnSyncToggle.addEventListener('click', () => {
+  settingsPanel.classList.toggle('open');
+});
+
+// Save token + gist ID from inputs whenever they change
+function persistGistInputs() {
+  const cfg = loadGistConfig();
+  cfg.token  = inputToken.value.trim();
+  cfg.gistId = inputGistId.value.trim();
+  saveGistConfig(cfg);
+  btnSyncToggle.classList.toggle('active', !!cfg.token);
+  if (!cfg.token) setSyncStatus('none');
+}
+inputToken.addEventListener('change',  persistGistInputs);
+inputGistId.addEventListener('change', persistGistInputs);
+
+// Manual sync
+btnSyncNow.addEventListener('click', async () => {
+  persistGistInputs();
+  await fullSync();
+});
+
+// Forget token
+btnClearGist.addEventListener('click', () => {
+  if (!confirm('Remove the stored token and Gist ID?')) return;
+  localStorage.removeItem(GIST_KEY);
+  inputToken.value  = '';
+  inputGistId.value = '';
+  setSyncStatus('none');
+  btnSyncToggle.classList.remove('active');
+});
+
+// Auto-push to Gist on pause and on tab close (not every 4 s timer tick)
+function gistPushIfConfigured() {
+  const cfg = loadGistConfig();
+  if (cfg.token) syncToGist().catch(() => {});
+}
+
+audio.addEventListener('pause', gistPushIfConfigured);
+window.addEventListener('pagehide', gistPushIfConfigured);
+
 // ── Start ──────────────────────────────────────────────────────────────────
+initGistUI();
 init();
 </script>
 </body>
