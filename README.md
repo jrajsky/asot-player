@@ -22,6 +22,7 @@ This player solves that. It remembers everything, entirely in your browser — n
 - Episodes played for less than 20 seconds are left as unplayed (skipping past the start of an episode by accident does not mark it as in-progress)
 - All state is stored in **browser localStorage** — serverless, private, persistent across sessions
 - Restores your last scroll position, search query, and filter when you reopen the page
+- **Optional cross-device sync** via a private GitHub Gist — progress is shared across your laptop, phone, or any other device
 
 ---
 
@@ -79,10 +80,85 @@ The header stats bar shows counts for each state. Click a count (e.g. **2 in pro
 
 ---
 
+## Cross-device sync via GitHub Gist
+
+Progress can be synced across devices (laptop, phone, etc.) using a private GitHub Gist as storage. No server or account beyond GitHub is required.
+
+### Step 1 — Create a GitHub Personal Access Token
+
+1. Go to **github.com** → click your profile picture (top right) → **Settings**
+2. Scroll down in the left sidebar → **Developer settings** (very bottom)
+3. **Personal access tokens** → **Tokens (classic)**
+4. Click **Generate new token** → **Generate new token (classic)**
+5. Give it a name, e.g. `asot-player`
+6. Set expiration to **No expiration** (or whatever you prefer)
+7. Under **Select scopes**, tick only **`gist`** — nothing else needed
+8. Click **Generate token**
+9. **Copy the token now** — GitHub shows it only once
+
+### Step 2 — Enter it in the player (first device)
+
+1. Open the player
+2. Click the **↻ sync icon** in the top-right of the header
+3. Paste the token into the **GitHub token** field
+4. Leave the Gist ID field empty
+5. Click **Sync now**
+
+The player will create a new private Gist and auto-fill the Gist ID field. **Copy that Gist ID** — you'll need it on other devices.
+
+### Step 3 — Set up a second device
+
+1. Open the player on the second device
+2. Click the **↻ sync icon**
+3. Paste the **same token**
+4. Paste the **Gist ID** from Step 2
+5. Click **Sync now**
+
+Done — both devices now share the same progress.
+
+### Day-to-day behaviour (nothing to do)
+
+- **Opening the player** → automatically pulls from the Gist
+- **Pausing or closing the tab** → automatically pushes to the Gist
+- The dot on the ↻ button tells you the status: pulsing amber = syncing, green = ok, red = error
+
+---
+
+## Privacy & security
+
+- The GitHub token is stored only in your browser's `localStorage` — it is never sent anywhere except directly to `api.github.com`
+- The Gist is created as **private** — it is not publicly visible
+- The token only has `gist` scope, so it cannot access your repositories, account settings, or anything else
+- If you ever want to stop syncing, click **Forget token** in the sync panel — this removes the token and Gist ID from the browser immediately
+
+---
+
+## Frequently asked questions
+
+**Does it work offline?**
+Playback requires an internet connection to stream from archive.org. Your progress is stored locally and always available offline — it just won't sync until you're back online.
+
+**What if I lose the token?**
+Generate a new one on GitHub following Step 1 again. Paste the new token together with the existing Gist ID — the Gist and all your progress data are still there.
+
+**What if I clear browser storage?**
+Local progress is lost, but if you had Gist sync set up the data is safe on GitHub. Re-enter your token and Gist ID, click **Sync now**, and everything is restored.
+
+**Can I use it on multiple browsers on the same device?**
+Yes — set up the same token and Gist ID in each browser.
+
+**Will episodes played briefly (< 20 s) show as in progress?**
+No. Playback position is only saved after 20 seconds have elapsed. Skipping past an episode by accident leaves it marked as unplayed.
+
+---
+
 ## Technical notes
 
-- Single static HTML file — no build step, no dependencies, no server required
+- Single static HTML file (`index.html`) — no build step, no dependencies, no server required
 - Audio streamed on demand from `archive.org/download/`; nothing is downloaded to your device
 - Progress data stored under the localStorage key `asot_player_v1`
 - View state (scroll position, filter, search) stored under `asot_view_v1`
+- Gist sync config (token, Gist ID) stored under `asot_gist_v1`
 - Position is saved every 4 seconds during playback, on pause, and when the tab is closed
+- Sync pushes on pause and tab close only — not on every periodic save — to stay well within GitHub API rate limits
+- Conflict resolution: per episode, the more advanced state always wins (`completed` > higher position > lower position)
